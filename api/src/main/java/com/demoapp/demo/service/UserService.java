@@ -19,7 +19,7 @@ public class UserService {
   }
 
   public boolean isPasswordValid(String password) {
-    String passRegex = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&]).{8,}$";
+    String passRegex = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&#]).{8,}$";
     return Pattern.matches(passRegex, password);
   }
 
