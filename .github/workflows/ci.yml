@@ -1,0 +1,119 @@
+name: CI
+
+on:
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: "12345"
+          MYSQL_DATABASE: social_media
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -p12345"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configurar Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Instalar dependências do cliente
+        working-directory: client
+        run: npm ci
+
+      - name: Instalar dependências Playwright
+        working-directory: tests
+        run: npm install
+
+      - name: Instalar navegador do Playwright
+        working-directory: tests
+        run: npx playwright install --with-deps chromium
+
+      - name: Testes do frontend
+        working-directory: client
+        run: npm test -- --runInBand
+
+      - name: Testes do backend
+        working-directory: api
+        env:
+          SPRING_DATASOURCE_URL: jdbc:mysql://127.0.0.1:3306/social_media
+          SPRING_DATASOURCE_USERNAME: root
+          SPRING_DATASOURCE_PASSWORD: "12345"
+        run: chmod +x mvnw && ./mvnw test
+
+      - name: Iniciar API
+        working-directory: api
+        env:
+          SPRING_DATASOURCE_URL: jdbc:mysql://127.0.0.1:3306/social_media
+          SPRING_DATASOURCE_USERNAME: root
+          SPRING_DATASOURCE_PASSWORD: "12345"
+        run: |
+          nohup ./mvnw spring-boot:run > /tmp/api.log 2>&1 &
+          echo $! > /tmp/api.pid
+
+      - name: Aguardar API
+        run: |
+          for i in $(seq 1 60); do
+            if curl -s http://localhost:8080/ >/dev/null; then
+              exit 0
+            fi
+            sleep 5
+          done
+          cat /tmp/api.log
+          exit 1
+
+      - name: Iniciar cliente
+        working-directory: client
+        env:
+          NEXT_PUBLIC_BASE_URL: http://localhost:8080
+        run: |
+          nohup npm run dev -- --hostname 0.0.0.0 > /tmp/client.log 2>&1 &
+          echo $! > /tmp/client.pid
+
+      - name: Aguardar cliente
+        run: |
+          for i in $(seq 1 60); do
+            if curl -sSf http://localhost:3000/ >/dev/null; then
+              exit 0
+            fi
+            sleep 5
+          done
+          cat /tmp/client.log
+          exit 1
+
+      - name: Testes de API e E2E
+        working-directory: tests
+        env:
+          API_URL: http://localhost:8080
+        run: npm test
+
+      - name: Logs em caso de falha
+        if: failure()
+        run: |
+          cat /tmp/api.log 2>/dev/null || true
+          cat /tmp/client.log 2>/dev/null || true

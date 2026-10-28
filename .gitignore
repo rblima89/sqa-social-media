@@ -1,0 +1,10 @@
+
+.DS_Store
+.vscode/
+node_modules/
+**/node_modules/
+target/
+.next/
+coverage/
+playwright-report/
+test-results/
