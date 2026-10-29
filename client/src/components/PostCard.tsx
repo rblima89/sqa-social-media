@@ -80,6 +80,18 @@ export default function PostCard({
       <div
         style={{
           display: "flex",
+          gap: "1rem",
+          alignItems: "center",
+          color: "var(--foreground)",
+          marginTop: "0.5rem",
+        }}
+      >
+        <span>👍 {post.reactions?.likes ?? 0}</span>
+        <span>👎 {post.reactions?.dislikes ?? 0}</span>
+      </div>
+ <div
+        style={{
+          display: "flex",
           justifyContent: "flex-end",
           alignItems: "center",
           marginTop: "1rem",
