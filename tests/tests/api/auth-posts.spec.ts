@@ -27,7 +27,7 @@ test.describe('API - autenticação', () => {
     });
 
     expect(res.status()).toBe(409);
-    expect(await res.json()).toMatchObject({ message: 'E-mail já está em uso', status: 409 });
+    expect(await res.json()).toMatchObject({ message: 'E-mail já cadastrado', status: 409 });
   });
 
   test('POST /auth/signup com e-mail sem "@" retorna 422', async ({ request }) => {
